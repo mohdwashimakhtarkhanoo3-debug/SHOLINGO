@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sholingo</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#app {
+  background: rgba(0,0,0,0.75);
+  padding: 30px;
+  border-radius: 20px;
+  text-align: center;
+  width: 360px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  animation: fadeIn 1s;
+  position: relative;
+}
+
+h1 { margin-bottom: 20px; }
+input[type="text"] {
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  margin-bottom: 20px;
+  width: 85%;
+  font-size: 16px;
+}
+button {
+  padding: 12px 25px;
+  border-radius: 10px;
+  border: none;
+  background: #ffcb05;
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+  margin: 10px 0;
+  transition: transform 0.2s;
+}
+button:hover { transform: scale(1.05); }
+.option-btn {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  background: #00c6ff;
+  color: #000;
+  font-weight: bold;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.3s;
+}
+.option-btn.correct { background: #28a745 !important; animation: correctAnim 0.5s; }
+.option-btn.wrong { background: #dc3545 !important; animation: wrongAnim 0.5s; }
+.feedback { margin-top: 15px; font-weight: bold; font-size: 18px; min-height: 24px; }
+#nextBtn { display: none; background: #17a2b8; }
+#score { margin-top: 10px; font-size: 16px; color: #ffd700; }
+#level { font-size: 16px; color: #00ffea; margin-bottom: 10px; }
+#homeBtn { margin-top: 15px; background: #ff6f61; }
+#quitBtn {
+  position: absolute; top: 15px; left: 15px;
+  background:#ff4c4c; color:#fff;
+  border:none; border-radius:50%;
+  width:35px; height:35px;
+  font-weight:bold; font-size:20px; cursor:pointer;
+}
+.modal {
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.7); display: flex;
+  justify-content:center; align-items:center; display:none;
+}
+.modal-content {
+  background: #111; padding: 25px 35px; border-radius:15px; text-align:center;
+}
+.modal button { margin:10px 15px; width:80px; }
+
+@keyframes fadeIn { from { opacity:0; transform:translateY(-20px);} to {opacity:1; transform:translateY(0);} }
+@keyframes correctAnim { 0%{transform:scale(1);}50%{transform:scale(1.2);}100%{transform:scale(1);} }
+@keyframes wrongAnim { 0%{transform:rotate(0deg);}25%{transform:rotate(-10deg);}50%{transform:rotate(10deg);}75%{transform:rotate(-10deg);}100%{transform:rotate(0deg);} }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Name Section -->
+  <div id="nameSection">
+    <h1>Welcome to Sholingo</h1>
+    <input type="text" id="playerName" placeholder="Enter your name" />
+    <br>
+    <button onclick="saveName()">Let's Play!</button>
+  </div>
+
+  <!-- Home Section -->
+  <div id="homeSection" style="display:none;">
+    <h1>Let's play together, <span id="playerDisplay"></span></h1>
+    <h2>Select Difficulty</h2>
+    <button onclick="startGame('Easy')">Easy</button>
+    <button onclick="startGame('Hard')">Hard</button>
+    <button onclick="startGame('Extreme')">Extreme</button>
+    <button onclick="startGame('Impossible')">Impossible</button>
+  </div>
+
+  <!-- Game Section -->
+  <div id="gameSection" style="display:none;">
+    <button id="quitBtn" onclick="openModal()">✖</button>
+    <h1 id="welcomeMsg"></h1>
+    <div id="level">Level: 1</div>
+    <div id="questionBox">
+      <h2 id="questionText"></h2>
+      <div id="options"></div>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div id="score">Score: 0</div>
+    <button id="nextBtn" onclick="nextQuestion()">Next</button>
+    <button id="homeBtn" onclick="goHome()">Home</button>
+  </div>
+
+</div>
+
+<!-- Quit Modal -->
+<div id="quitModal" class="modal">
+  <div class="modal-content">
+    <p>Are you sure you want to quit the session?</p>
+    <button onclick="confirmQuit()">Yes</button>
+    <button onclick="closeModal()">No</button>
+  </div>
+</div>
+
+<script>
+let player = localStorage.getItem('sholingoName');
+let currentQuestion = 0;
+let score = 0;
+let level = 1;
+let difficulty = "Easy";
+
+const questions = [
+  { question: "Who is the world's richest person?", options: ["Elon Musk","Jeff Bezos","Donald Trump"], answer: "Elon Musk", difficulty:"Easy"},
+  { question: "Which planet is known as the Red Planet?", options: ["Mars","Venus","Jupiter"], answer: "Mars", difficulty:"Easy"},
+  { question: "What is the capital of Japan?", options: ["Tokyo","Beijing","Seoul"], answer: "Tokyo", difficulty:"Hard"},
+  { question: "Which animal is known as the King of the Jungle?", options: ["Lion","Tiger","Elephant"], answer: "Lion", difficulty:"Easy"},
+  { question: "What is the speed of light?", options: ["300,000 km/s","150,000 km/s","1,000 km/s"], answer: "300,000 km/s", difficulty:"Extreme"},
+  { question: "Who developed the theory of relativity?", options:["Newton","Einstein","Galileo"], answer:"Einstein", difficulty:"Hard"},
+  { question: "Quantum computing uses which principle?", options:["Superposition","Gravity","Friction"], answer:"Superposition", difficulty:"Impossible"}
+];
+
+function saveName() {
+  const nameInput = document.getElementById('playerName').value.trim();
+  if(nameInput !== ""){
+    localStorage.setItem('sholingoName', nameInput);
+    player = nameInput;
+    document.getElementById('playerDisplay').innerText = player;
+    showHome();
+  } else alert("Please enter your name!");
+}
+
+function showHome() {
+  document.getElementById('nameSection').style.display='none';
+  document.getElementById('gameSection').style.display='none';
+  document.getElementById('homeSection').style.display='block';
+  document.getElementById('playerDisplay').innerText = player;
+}
+
+function startGame(selectedDifficulty) {
+  difficulty = selectedDifficulty;
+  currentQuestion = 0;
+  score = 0;
+  level = 1;
+  document.getElementById('homeSection').style.display='none';
+  document.getElementById('gameSection').style.display='block';
+  document.getElementById('welcomeMsg').innerText = `Difficulty: ${difficulty}`;
+  updateLevel();
+  updateScore();
+  showQuestion();
+}
+
+function showQuestion() {
+  const filteredQuestions = questions.filter(q => q.difficulty === difficulty);
+  const q = filteredQuestions[currentQuestion % filteredQuestions.length];
+  const optionsDiv = document.getElementById('options');
+  document.getElementById('feedback').innerText='';
+  document.getElementById('nextBtn').style.display='none';
+  optionsDiv.innerHTML='';
+  document.getElementById('questionText').innerText = q.question;
+
+  q.options.forEach(opt=>{
+    const btn = document.createElement('button');
+    btn.innerText = opt;
+    btn.className='option-btn';
+    btn.onclick = ()=> checkAnswer(btn,opt,q, filteredQuestions.length);
+    optionsDiv.appendChild(btn);
+  });
+}
+
+function checkAnswer(btn, selected, q, totalQuestions) {
+  const feedback = document.getElementById('feedback');
+  const allButtons = document.querySelectorAll('.option-btn');
+  allButtons.forEach(b => b.disabled=true);
+
+  if(selected === q.answer){
+    feedback.innerText="Correct ✅";
+    btn.classList.add('correct');
+    score += 10;
+  } else {
+    feedback.innerText="Wrong ❌";
+    btn.classList.add('wrong');
+    allButtons.forEach(b=>{if(b.innerText===q.answer) b.classList.add('correct')});
+  }
+
+  level += 1; 
+  updateLevel();
+  updateScore();
+  document.getElementById('nextBtn').style.display='block';
+}
+
+function nextQuestion(){
+  currentQuestion++;
+  showQuestion();
+}
+
+function updateScore(){ document.getElementById('score').innerText=`Score: ${score}`; }
+function updateLevel(){ document.getElementById('level').innerText=`Level: ${level}`; }
+
+function goHome(){ showHome(); }
+
+function openModal(){ document.getElementById('quitModal').style.display='flex'; }
+function closeModal(){ document.getElementById('quitModal').style.display='none'; }
+function confirmQuit(){ closeModal(); goHome(); }
+
+// Auto start if name exists
+if(player) showHome();
+</script>
+
+</body>
+</html>
